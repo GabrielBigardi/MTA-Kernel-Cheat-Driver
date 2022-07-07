@@ -1,8 +1,0 @@
-﻿  Building 'KRNYT' with toolset 'WindowsKernelModeDriver10.0' and the 'Universal' target platform.
-  Stamping x64\Release\KRNYT.inf
-  Stamping [Version] section with DriverVer=07/01/2022,21.58.21.67
-  hook.cpp
-C:\Users\gabri\Desktop\Cheat\KRNYT\KRNYT\hook.cpp(72,23): warning C4996: 'ExAllocatePool': ExAllocatePool is deprecated, use ExAllocatePool2.
-C:\Users\gabri\Desktop\Cheat\KRNYT\KRNYT\hook.cpp(123): warning C4706: atribuição dentro de expressão condicional
-  KRNYT.vcxproj -> C:\Users\gabri\Desktop\Cheat\KRNYT\x64\Release\KRNYT.sys
-  Driver is 'Universal'.
