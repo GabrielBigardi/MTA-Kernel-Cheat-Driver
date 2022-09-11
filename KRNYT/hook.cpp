@@ -65,6 +65,22 @@ NTSTATUS nullhook::hook_handler(PVOID called_param)
 		RtlFreeUnicodeString(&ModuleName);
 	}
 
+	else if (instructions->req_base_x86 == TRUE)
+	{
+		ANSI_STRING AS;
+		UNICODE_STRING ModuleName;
+
+		RtlInitAnsiString(&AS, instructions->module_name);
+		RtlAnsiStringToUnicodeString(&ModuleName, &AS, TRUE);
+
+		PEPROCESS process;
+		PsLookupProcessByProcessId((HANDLE)instructions->pid, &process);
+		ULONG64 base_address64 = NULL;
+		base_address64 = get_module_base_x86(process, ModuleName);
+		instructions->base_address = base_address64;
+		RtlFreeUnicodeString(&ModuleName);
+	}
+
 	else if (instructions->write == TRUE)
 	{
 		if (instructions->address < 0x7FFFFFFFFFFF && instructions->address > 0)

@@ -144,6 +144,96 @@ ULONG64 get_module_base_x64(PEPROCESS proc, UNICODE_STRING module_name)
 	return NULL;
 }
 
+typedef struct _PEB32
+{
+	UCHAR InheritedAddressSpace;
+	UCHAR ReadImageFileExecOptions;
+	UCHAR BeingDebugged;
+	UCHAR BitField;
+	ULONG Mutant;
+	ULONG ImageBaseAddress;
+	ULONG Ldr;
+	ULONG ProcessParameters;
+	ULONG SubSystemData;
+	ULONG ProcessHeap;
+	ULONG FastPebLock;
+	ULONG AtlThunkSListPtr;
+	ULONG IFEOKey;
+	ULONG CrossProcessFlags;
+	ULONG UserSharedInfoPtr;
+	ULONG SystemReserved;
+	ULONG AtlThunkSListPtr32;
+	ULONG ApiSetMap;
+} PEB32, * PPEB32;
+
+typedef struct _PEB_LDR_DATA32
+{
+	ULONG Length;
+	UCHAR Initialized;
+	ULONG SsHandle;
+	LIST_ENTRY32 InLoadOrderModuleList;
+	LIST_ENTRY32 InMemoryOrderModuleList;
+	LIST_ENTRY32 InInitializationOrderModuleList;
+} PEB_LDR_DATA32, * PPEB_LDR_DATA32;
+
+typedef struct _LDR_DATA_TABLE_ENTRY32
+{
+	LIST_ENTRY32 InLoadOrderLinks;
+	LIST_ENTRY32 InMemoryOrderLinks;
+	LIST_ENTRY32 InInitializationOrderLinks;
+	ULONG DllBase;
+	ULONG EntryPoint;
+	ULONG SizeOfImage;
+	UNICODE_STRING32 FullDllName;
+	UNICODE_STRING32 BaseDllName;
+	ULONG Flags;
+	USHORT LoadCount;
+	USHORT TlsIndex;
+	LIST_ENTRY32 HashLinks;
+	ULONG TimeDateStamp;
+} LDR_DATA_TABLE_ENTRY32, * PLDR_DATA_TABLE_ENTRY32;
+
+extern "C" NTKERNELAPI PVOID PsGetProcessWow64Process(
+	IN PEPROCESS Process
+);
+
+ULONG64 get_module_base_x86(PEPROCESS proc, UNICODE_STRING module_name)
+{
+	PPEB32 pPeb32 = (PPEB32)PsGetProcessWow64Process(proc);
+
+	if (!pPeb32)
+	{
+		return NULL;
+	}
+
+	KAPC_STATE state;
+
+	KeStackAttachProcess(proc, &state);
+
+	PPEB_LDR_DATA pLdr = (PPEB_LDR_DATA)pPeb32->Ldr;
+
+	if (!pLdr)
+	{
+		KeUnstackDetachProcess(&state);
+		return NULL;
+	}
+
+	for (PLIST_ENTRY32 pListEntry = (PLIST_ENTRY32)((PPEB_LDR_DATA32)pPeb32->Ldr)->InLoadOrderModuleList.Flink; pListEntry != &((PPEB_LDR_DATA32)pPeb32->Ldr)->InLoadOrderModuleList; pListEntry = (PLIST_ENTRY32)pListEntry->Flink)
+	{
+		PLDR_DATA_TABLE_ENTRY32 pEntry = CONTAINING_RECORD(pListEntry, LDR_DATA_TABLE_ENTRY32, InLoadOrderLinks);
+
+		if (!_wcsicmp((const wchar_t*)pEntry->BaseDllName.Buffer, (wchar_t*)&module_name))
+		{
+			ULONG64 baseAddr = (ULONG64)pEntry->DllBase;
+			KeUnstackDetachProcess(&state);
+			return baseAddr;
+		}
+	}
+
+	KeUnstackDetachProcess(&state);
+	return NULL;
+}
+
 bool read_kernel_memory(HANDLE pid, uintptr_t address, void* buffer, SIZE_T size)
 {
 	if (!address || !buffer || !size)
