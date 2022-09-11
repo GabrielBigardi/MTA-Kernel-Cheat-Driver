@@ -197,8 +197,24 @@ extern "C" NTKERNELAPI PVOID PsGetProcessWow64Process(
 	IN PEPROCESS Process
 );
 
+WCHAR* UnicodeStringToNulTerminated(UNICODE_STRING* str)
+{
+	WCHAR* result;
+	if (str == NULL)
+		return NULL;
+	result = (WCHAR*)ExAllocatePool(NonPagedPool, str->Length + 2);
+	if (result == NULL)
+		// raise?
+		return NULL;
+	memcpy(result, str->Buffer, str->Length);
+	result[str->Length] = L'\0';
+	return result;
+}
+
 ULONG64 get_module_base_x86(PEPROCESS proc, UNICODE_STRING module_name)
 {
+
+
 	PPEB32 pPeb32 = (PPEB32)PsGetProcessWow64Process(proc);
 
 	if (!pPeb32)
@@ -222,7 +238,7 @@ ULONG64 get_module_base_x86(PEPROCESS proc, UNICODE_STRING module_name)
 	{
 		PLDR_DATA_TABLE_ENTRY32 pEntry = CONTAINING_RECORD(pListEntry, LDR_DATA_TABLE_ENTRY32, InLoadOrderLinks);
 
-		if (!_wcsicmp((const wchar_t*)pEntry->BaseDllName.Buffer, (wchar_t*)&module_name))
+		if (!_wcsicmp((const wchar_t*)pEntry->BaseDllName.Buffer, reinterpret_cast<wchar_t*>(module_name.Buffer)))
 		{
 			ULONG64 baseAddr = (ULONG64)pEntry->DllBase;
 			KeUnstackDetachProcess(&state);
